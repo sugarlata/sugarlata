@@ -1,0 +1,281 @@
+openapi: 3.0.0
+info:
+  title: ObjectSharingAPI
+  description: This is a simple backend to share objects.
+  version: v1
+tags:
+  - name: Share
+paths:
+  /share/entry:
+    post:
+      operationId: EntryOperations_registerEntry
+      summary: Register an entry for upload
+      description: "`userAgent` format: `object-sharing.app/VERSION`"
+      parameters: []
+      responses:
+        "200":
+          description: The request has succeeded.
+          headers:
+            user-agent:
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    properties:
+                      uuidBlob:
+                        type: string
+                      salt:
+                        type: string
+                      expiry:
+                        type: integer
+                      accessToken:
+                        type: string
+                    required:
+                      - uuidBlob
+                      - salt
+                      - expiry
+                      - accessToken
+                  - $ref: "#/components/schemas/shareEntryError422"
+                  - $ref: "#/components/schemas/shareEntryError409"
+                  - $ref: "#/components/schemas/shareEntryError500"
+      tags:
+        - Share
+  /share/entry/{uuid-blob}:
+    post:
+      operationId: EntryOperations_uploadEntry
+      summary: Update auth credentials for uploading an entry
+      description: "`userAgent` format: `object-sharing.app/VERSION`"
+      parameters:
+        - name: uuid-blob
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: user-agent
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-access-token
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - type: object
+                    properties:
+                      preSignedUrl:
+                        type: string
+                    required:
+                      - preSignedUrl
+                  - $ref: "#/components/schemas/shareEntryError401"
+                  - $ref: "#/components/schemas/shareEntryError404"
+                  - $ref: "#/components/schemas/shareEntryError422"
+                  - $ref: "#/components/schemas/shareEntryError409"
+                  - $ref: "#/components/schemas/shareEntryError500"
+      tags:
+        - Share
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadEntryRequest"
+    get:
+      operationId: EntryOperations_downloadEntry
+      summary: Download an entry
+      description: "`userAgent` format: `object-sharing.app/VERSION`"
+      parameters:
+        - name: uuid-blob
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: x-api-proof
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: user-agent
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadEntryResponse"
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/shareEntryError401"
+        "404":
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/shareEntryError404"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/shareEntryError500"
+      tags:
+        - Share
+    delete:
+      operationId: EntryOperations_deleteEntry
+      summary: Delete an entry
+      description: "`userAgent` format: `object-sharing.app/VERSION`"
+      parameters:
+        - name: uuid-blob
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: x-api-proof
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: user-agent
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: "There is no content to send for this request, but the headers may be useful. "
+        "401":
+          description: Access is unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/shareEntryError401"
+        "404":
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/shareEntryError404"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/shareEntryError500"
+      tags:
+        - Share
+  /share/entry/{uuid-blob}/salt:
+    get:
+      operationId: EntryOperations_downloadEntrySalt
+      summary: Get the salt for an entry
+      description: "`userAgent` format: `object-sharing.app/VERSION`"
+      parameters:
+        - name: uuid-blob
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: user-agent
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadEntrySaltResponse"
+        "404":
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/shareEntryError404"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/shareEntryError500"
+      tags:
+        - Share
+components:
+  schemas:
+    DownloadEntryResponse:
+      type: object
+      required:
+        - preSignedUrl
+      properties:
+        preSignedUrl:
+          type: string
+    DownloadEntrySaltResponse:
+      type: object
+      required:
+        - salt
+      properties:
+        salt:
+          type: string
+    UploadEntryRequest:
+      type: object
+      required:
+        - proof
+        - encoderVersion
+      properties:
+        proof:
+          type: string
+        encoderVersion:
+          type: integer
+    shareEntryError401:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+    shareEntryError404:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+    shareEntryError409:
+      type: object
+    shareEntryError422:
+      type: object
+    shareEntryError500:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+servers:
+  - url: http://127.0.0.1:3000
+    description: Local Development Server
+    variables: {}
+  - url: https://api.dev.redacted.cloud
+    description: Development Server
+    variables: {}
+  - url: https://api.redacted.cloud
+    description: Production Server
+    variables: {}
